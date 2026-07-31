@@ -1,0 +1,33 @@
+name: build-amethyst
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: gemquota/amethyst
+          ref: feat/fdroid-libretranslate
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Ensure SDK platform 37
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platforms;android-37" "platform-tools" > /dev/null 2>&1 || echo "already present"
+      - name: Build both debug APKs + F-Droid unit test
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          ./gradlew :amethyst:assemblePlayDebug :amethyst:assembleFdroidDebug :amethyst:testFdroidDebugUnitTest --no-daemon
+      - name: Show artifacts
+        run: find amethyst/build/outputs/apk -name "*.apk" -exec ls -la {} \;
+      - uses: actions/upload-artifact@v4
+        with:
+          name: amethyst-debug-apks
+          path: |
+            amethyst/build/outputs/apk/play/debug/*.apk
+            amethyst/build/outputs/apk/fdroid/debug/*.apk
+          if-no-files-found: error
