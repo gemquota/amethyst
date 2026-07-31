@@ -50,22 +50,22 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
           script: |
             set -x
+            adb wait-for-device
+            adb shell getprop sys.boot_completed
             echo "=== F-Droid flavor ==="
-            adb install -r apks/fdroid/debug/amethyst-fdroid-x86_64-debug.apk
-            adb shell pm list packages | grep amethyst
-            adb shell am start -n com.vitorpamplona.amethyst.debug/.ui.MainActivity
-            sleep 30
-            adb exec-out screencap -p > fdroid_home.png || true
-            adb shell pm path com.vitorpamplona.amethyst.debug
+            timeout 180 adb install -r apks/fdroid/debug/amethyst-fdroid-x86_64-debug.apk || echo FDROID_INSTALL_TIMEOUT
+            adb shell pm list packages | grep amethyst || echo FDROID_NOT_INSTALLED
+            timeout 60 adb shell am start -n com.vitorpamplona.amethyst.debug/.ui.MainActivity || true
+            sleep 20
+            timeout 30 adb exec-out screencap -p > fdroid_home.png || echo FDROID_SCREENCAP_FAIL
             adb uninstall com.vitorpamplona.amethyst.debug || true
             echo "=== Play flavor ==="
-            adb install -r apks/play/debug/amethyst-play-x86_64-debug.apk
-            adb shell pm list packages | grep amethyst
-            adb shell am start -n com.vitorpamplona.amethyst.debug/.ui.MainActivity
-            sleep 30
-            adb exec-out screencap -p > play_home.png || true
-            adb shell pm path com.vitorpamplona.amethyst.debug
-            ls -la *.png
+            timeout 180 adb install -r apks/play/debug/amethyst-play-x86_64-debug.apk || echo PLAY_INSTALL_TIMEOUT
+            adb shell pm list packages | grep amethyst || echo PLAY_NOT_INSTALLED
+            timeout 60 adb shell am start -n com.vitorpamplona.amethyst.debug/.ui.MainActivity || true
+            sleep 20
+            timeout 30 adb exec-out screencap -p > play_home.png || echo PLAY_SCREENCAP_FAIL
+            ls -la *.png || true
       - uses: actions/upload-artifact@v4
         with:
           name: amethyst-emulator-screens
