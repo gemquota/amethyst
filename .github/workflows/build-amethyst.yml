@@ -31,3 +31,45 @@ jobs:
             amethyst/build/outputs/apk/play/debug/*.apk
             amethyst/build/outputs/apk/fdroid/debug/*.apk
           if-no-files-found: error
+
+  emulator:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: amethyst-debug-apks
+          path: apks
+      - name: Install + launch both flavors on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
+          script: |
+            set -x
+            echo "=== F-Droid flavor ==="
+            adb install -r apks/fdroid/debug/amethyst-fdroid-x86_64-debug.apk
+            adb shell pm list packages | grep amethyst
+            adb shell am start -n com.vitorpamplona.amethyst.debug/.ui.MainActivity
+            sleep 30
+            adb exec-out screencap -p > fdroid_home.png || true
+            adb shell pm path com.vitorpamplona.amethyst.debug
+            adb uninstall com.vitorpamplona.amethyst.debug || true
+            echo "=== Play flavor ==="
+            adb install -r apks/play/debug/amethyst-play-x86_64-debug.apk
+            adb shell pm list packages | grep amethyst
+            adb shell am start -n com.vitorpamplona.amethyst.debug/.ui.MainActivity
+            sleep 30
+            adb exec-out screencap -p > play_home.png || true
+            adb shell pm path com.vitorpamplona.amethyst.debug
+            ls -la *.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: amethyst-emulator-screens
+          path: |
+            fdroid_home.png
+            play_home.png
+          if-no-files-found: warn
